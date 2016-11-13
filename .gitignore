@@ -1,4 +1,3 @@
-*.patch
 VEX_SAVE
 Makefile
 makefile.inc

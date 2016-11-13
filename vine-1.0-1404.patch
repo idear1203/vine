@@ -1,0 +1,116 @@
+diff -ur vine-1.0/libasmir/src/disasm/asm_program.cpp vine-1.0+1404/libasmir/src/disasm/asm_program.cpp
+--- vine-1.0/libasmir/src/disasm/asm_program.cpp	2009-09-21 19:33:36.000000000 -0500
++++ vine-1.0+1404/libasmir/src/disasm/asm_program.cpp	2016-08-30 12:36:50.774466871 -0500
+@@ -10,10 +10,11 @@
+ */
+ 
+ #include <errno.h>
++#define HAVE_DECL_BASENAME 1
++#include <libiberty/libiberty.h>
+ #include "debug.h"
+ #include "asm_program.h"
+ #include "objdump.h"
+-#include "libiberty.h"
+ 
+ 
+ static void *xalloc(size_t num, size_t size);
+diff -ur vine-1.0/libasmir/src/vex/irtoir-arm.cpp vine-1.0+1404/libasmir/src/vex/irtoir-arm.cpp
+--- vine-1.0/libasmir/src/vex/irtoir-arm.cpp	2009-09-21 19:33:36.000000000 -0500
++++ vine-1.0+1404/libasmir/src/vex/irtoir-arm.cpp	2016-08-30 12:37:54.862466871 -0500
+@@ -12,6 +12,7 @@
+ 
+ #include "irtoir-internal.h"
+ #include "libvex_guest_arm.h"
++#include <stddef.h>
+ 
+ 
+ 
+diff -ur vine-1.0/libasmir/src/vex/irtoir-i386.cpp vine-1.0+1404/libasmir/src/vex/irtoir-i386.cpp
+--- vine-1.0/libasmir/src/vex/irtoir-i386.cpp	2009-09-21 19:33:36.000000000 -0500
++++ vine-1.0+1404/libasmir/src/vex/irtoir-i386.cpp	2016-08-30 12:37:35.638466871 -0500
+@@ -13,6 +13,7 @@
+ #include <vector>
+ #include <iostream>
+ #include <assert.h>
++#include <stddef.h>
+ 
+ #include "irtoir-internal.h"
+ #include "libvex_guest_x86.h"
+diff -ur vine-1.0/ocaml/Makefile vine-1.0+1404/ocaml/Makefile
+--- vine-1.0/ocaml/Makefile	2009-09-24 16:45:57.000000000 -0500
++++ vine-1.0+1404/ocaml/Makefile	2016-08-30 12:38:39.494466871 -0500
+@@ -60,7 +60,7 @@
+ export CLIBFLAGS= $(LDFLAGS)
+ export LIBDIRS = $(LIBASMIR)/src # ../appreplay ../stp ../stp/ocaml
+ 
+-OCAMLFLAGS = -warn-error Aelz  #-w A
++OCAMLFLAGS =  #-w A
+ # merge everything but descriptions.
+ OCAMLDOCFLAGS = -m avlsoper
+ 
+diff -ur vine-1.0/ocaml/vine_cfg.ml vine-1.0+1404/ocaml/vine_cfg.ml
+--- vine-1.0/ocaml/vine_cfg.ml	2009-09-24 16:45:57.000000000 -0500
++++ vine-1.0+1404/ocaml/vine_cfg.ml	2016-08-30 12:47:57.558466871 -0500
+@@ -119,6 +119,7 @@
+   method iter_bb : ('a bb -> unit) -> unit
+   method fold_bb : 'b. ('a bb -> 'b -> 'b) -> 'b -> 'b
+   method iter_edges : ('a bb -> 'a bb -> unit) -> unit
++  method fold_edges : 'b. ('a bb -> 'a bb -> 'b -> 'b) -> 'b -> 'b
+   method get_info : 'a bb -> 'a
+   method set_info : 'a bb -> 'a -> unit
+   method get_id : 'a bb -> bbid
+@@ -238,6 +239,14 @@
+     self#iter_bb (fun b -> List.iter (f b) (self#succ b));
+     self#check_graph;
+ 
++  method fold_edges f a =
++    self#check_graph;
++    let res = self#fold_bb
++      (fun b a2 -> List.fold_left (fun a3 b2 -> f b b2 a3) a2 (self#succ b)) a
++    in
++      self#check_graph;
++      res
++
+   method length = Hashtbl.length blktbl
+ 
+   method get_info b =
+@@ -1054,6 +1063,7 @@
+   val iter_vertex : (bbid -> unit) -> t -> unit
+   val fold_vertex : (bbid -> 'a -> 'a) -> t -> 'a -> 'a
+   val iter_edges_e : (E.t -> unit) -> t -> unit
++  val fold_edges_e : (E.t -> 'a -> 'a) -> t -> 'a -> 'a
+   val iter_succ : (vertex -> unit) -> t -> vertex -> unit
+   val iter_pred : (vertex -> unit) -> t -> vertex -> unit
+   val in_degree : t -> vertex -> int
+@@ -1102,6 +1112,8 @@
+   let fold_vertex f (g:t) a = g#fold_bb (fun b -> f b.id) a 
+   let iter_edges_e f (g:t) =
+     g#iter_edges (fun x y -> f (g#get_id x, g#get_id y))
++  let fold_edges_e f (g:t) a =
++    g#fold_edges (fun x y a -> f (g#get_id x, g#get_id y) a) a
+   let iter_succ f g v = List.iter f (bb_succ g v)
+   let iter_pred f g v = List.iter f (bb_pred g v)
+   let in_degree g v = List.length (bb_pred g v)
+diff -ur vine-1.0/ocaml/vine_cfg.mli vine-1.0+1404/ocaml/vine_cfg.mli
+--- vine-1.0/ocaml/vine_cfg.mli	2009-09-24 16:45:57.000000000 -0500
++++ vine-1.0+1404/ocaml/vine_cfg.mli	2016-08-30 12:47:57.558466871 -0500
+@@ -85,6 +85,11 @@
+     (** [cfg#iter_edges f] calls [f a b] forall [(a,b)] where there is an edge
+ 	from [a] to [b] in the CFG.  *)
+ 
++  method fold_edges : 'b. ('a bb -> 'a bb -> 'b -> 'b) -> 'b -> 'b
++    (** [cfg#fold_edges f init] computes [f uN uN (... (f u1 v1
++	init)...)] where [(u1, v1) ... (uN, vN)] is an enumeration of all
++	the edges in the graph, in an unspecified order. *)
++
+   method get_info : 'a bb -> 'a
+     (** Returns the info associated with the given bb. *)
+ 
+@@ -224,6 +229,7 @@
+   val iter_vertex : (bbid -> unit) -> t -> unit
+   val fold_vertex : (vertex -> 'a -> 'a) -> t -> 'a -> 'a
+   val iter_edges_e : (E.t -> unit) -> t -> unit
++  val fold_edges_e : (E.t -> 'a -> 'a) -> t -> 'a -> 'a
+   val iter_succ : (vertex -> unit) -> t -> vertex -> unit
+   val iter_pred : (vertex -> unit) -> t -> vertex -> unit
+   val in_degree : t -> vertex -> int
