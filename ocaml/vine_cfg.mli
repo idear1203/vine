@@ -85,6 +85,11 @@ object ('b)
     (** [cfg#iter_edges f] calls [f a b] forall [(a,b)] where there is an edge
 	from [a] to [b] in the CFG.  *)
 
+  method fold_edges : 'b. ('a bb -> 'a bb -> 'b -> 'b) -> 'b -> 'b
+    (** [cfg#fold_edges f init] computes [f uN uN (... (f u1 v1
+	init)...)] where [(u1, v1) ... (uN, vN)] is an enumeration of all
+	the edges in the graph, in an unspecified order. *)
+
   method get_info : 'a bb -> 'a
     (** Returns the info associated with the given bb. *)
 
@@ -224,6 +229,7 @@ sig
   val iter_vertex : (bbid -> unit) -> t -> unit
   val fold_vertex : (vertex -> 'a -> 'a) -> t -> 'a -> 'a
   val iter_edges_e : (E.t -> unit) -> t -> unit
+  val fold_edges_e : (E.t -> 'a -> 'a) -> t -> 'a -> 'a
   val iter_succ : (vertex -> unit) -> t -> vertex -> unit
   val iter_pred : (vertex -> unit) -> t -> vertex -> unit
   val in_degree : t -> vertex -> int

@@ -119,6 +119,7 @@ object ('b)
   method iter_bb : ('a bb -> unit) -> unit
   method fold_bb : 'b. ('a bb -> 'b -> 'b) -> 'b -> 'b
   method iter_edges : ('a bb -> 'a bb -> unit) -> unit
+  method fold_edges : 'b. ('a bb -> 'a bb -> 'b -> 'b) -> 'b -> 'b
   method get_info : 'a bb -> 'a
   method set_info : 'a bb -> 'a -> unit
   method get_id : 'a bb -> bbid
@@ -237,6 +238,14 @@ object (self: 'a #cfg_type)
     self#check_graph;
     self#iter_bb (fun b -> List.iter (f b) (self#succ b));
     self#check_graph;
+
+  method fold_edges f a =
+    self#check_graph;
+    let res = self#fold_bb
+      (fun b a2 -> List.fold_left (fun a3 b2 -> f b b2 a3) a2 (self#succ b)) a
+    in
+      self#check_graph;
+      res
 
   method length = Hashtbl.length blktbl
 
@@ -1054,6 +1063,7 @@ sig
   val iter_vertex : (bbid -> unit) -> t -> unit
   val fold_vertex : (bbid -> 'a -> 'a) -> t -> 'a -> 'a
   val iter_edges_e : (E.t -> unit) -> t -> unit
+  val fold_edges_e : (E.t -> 'a -> 'a) -> t -> 'a -> 'a
   val iter_succ : (vertex -> unit) -> t -> vertex -> unit
   val iter_pred : (vertex -> unit) -> t -> vertex -> unit
   val in_degree : t -> vertex -> int
@@ -1102,6 +1112,8 @@ struct
   let fold_vertex f (g:t) a = g#fold_bb (fun b -> f b.id) a 
   let iter_edges_e f (g:t) =
     g#iter_edges (fun x y -> f (g#get_id x, g#get_id y))
+  let fold_edges_e f (g:t) a =
+    g#fold_edges (fun x y a -> f (g#get_id x, g#get_id y) a) a
   let iter_succ f g v = List.iter f (bb_succ g v)
   let iter_pred f g v = List.iter f (bb_pred g v)
   let in_degree g v = List.length (bb_pred g v)
