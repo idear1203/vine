@@ -2,3 +2,4 @@ VEX_SAVE
 Makefile
 makefile.inc
 config.*
+.deps
