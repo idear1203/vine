@@ -1272,8 +1272,6 @@ let trace_insn_of_eh prog eh =
 
 (* Memory registers and source operands needs to be initialized after 
    destination operands. Otherwise, the former's values will be overwriten
-   
-   Example:  movz{bl|x|bl|x} (%eax,%ecx,2),%eax
 *)
 let opvals_fold_left ?(ignore_write_ops=false) cb acc eh =
   let is_read_op op =
