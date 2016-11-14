@@ -4,7 +4,7 @@ The original vine repository has not been updated for a long time. Compilation f
 
 This repository aims to make it easier for vine users to build vine.
 
-My host OS version is 32bit Ubuntu(version 16.04).
+My host OS version is Ubuntu 16.04 Linux 32 bit.
 
 ```
 $ lsb_release -a

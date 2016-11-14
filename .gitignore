@@ -47,3 +47,4 @@ utils/evaluator
 utils/irtrans
 utils/irutil
 utils/wputil
+command.save
